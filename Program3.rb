@@ -18,8 +18,7 @@ while count < c.length
 end
 
 i=0
-while (i<10)
+while (i<c.length)
     print c[i]," "
     i += 1
-    # puts c[i]
 end
