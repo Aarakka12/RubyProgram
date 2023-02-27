@@ -1,43 +1,52 @@
 # Sales Tax calculator
-# food = [chocolate bar,chocolate box]
-class Item
-    attr_reader :name, :price, :tax_rate, :imported
 
+class TaxCalculator
     Basic_Tax_Rate = 0.1
     Import_Tax_Rate = 0.05
     Rounding_Factor = 0.05
+    
+    
+    def self.calculate_sales_tax(item)
+        item.product? ? 0 :rounded_tax(item.price * Basic_Tax_Rate)
+    end
 
-    def initialize(name, price, tax_rate: Basic_Tax_Rate, imported: false)
+    def self.calculate_import_tax(item)
+        item.imported ? rounded_tax(item.price * Import_Tax_Rate):0
+    end
+
+    def self.rounded_tax(tax)
+        (tax / Rounding_Factor).ceil * Rounding_Factor
+    end
+end
+
+class Item
+    attr_reader :name, :price, :quantity, :imported
+
+    def initialize(name, price, quantity, imported: false)
         @name = name
         @price = price
-        @tax_rate = tax_rate
+        @quantity = quantity
         @imported = imported
     end
 
     def sales_tax
-        product? ? 0:rounded_tax(price * tax_rate)
+        TaxCalculator.calculate_sales_tax(self)
     end
 
     def import_tax
-        imported ? rounded_tax(price * Import_Tax_Rate) : 0
+        TaxCalculator.calculate_import_tax(self)
     end
 
     def total_price
-        price + sales_tax + import_tax
+        price * quantity + sales_tax * quantity + import_tax * quantity
     end
 
     def to_s
-        "#{name}: #{'%.2f'%total_price}"
+        "#{quantity} #{name}: #{'%.2f' % total_price}"
     end
-
-    private
 
     def product?
-        name =~/book|chocolate|pills|medicine|tablets/
-    end
-
-    def rounded_tax(tax)
-        (tax / Rounding_Factor).ceil * Rounding_Factor
+        name =~ /book|chocolate|pills|medicine|tablets/
     end
 end
 
@@ -45,15 +54,15 @@ class Receipt
     attr_reader :items
 
     def initialize(items)
-        @items = items        
+        @items = items.map{|item| Item.new(item[:name], item[:price], item[:quantity], imported: item[:imported])}        
     end
 
     def total_sales_tax
-        items.map(&:sales_tax).sum        
+        items.map{|item| item.sales_tax * item.quantity}.sum        
     end
 
     def total_cost
-        items.map(&:total_price).sum
+        items.map{|item| item.total_price}.sum
     end
 
     def to_s
@@ -62,23 +71,37 @@ class Receipt
     end
 end
 
-items = []
-puts "Enter n:"
-n = gets.chomp.to_i
-while n>0
-    puts "Enter  item name:"
-    name = gets.chomp.downcase
-    # break if name ==  "done"
-
-    puts "Enter item price:"
-    price = gets.chomp.to_f
-
-    items << Item.new(name, price)
-
-    puts ""
-    n-=1
+class InputReader
+    def self.read_input
+        input = ""
+        loop do
+            line = gets
+            break if line.strip.empty?
+            input += line
+        end
+        input
+    end
 end
 
-receipt = Receipt.new(items)
+class UserInput
+    def self.user(input)
+        items = []
+        input.each_line do |line|
+            line.match(/(?<quantity>\d+)(?<name>.+) at (?<price>\d+(\.\d{2})?)$/) do |m|
+                quantity = m[:quantity].to_i
+                name = m[:name]
+                price = m[:price].to_f
+                imported = name.include?("imported")
+
+                items << {name: name, price: price, quantity: quantity, imported: imported}
+            end
+        end
+        items
+    end 
+end
+
+input = InputReader.read_input
+items = UserInput.user(input)
+receipt = Receipt.new(items)       
 
 puts receipt
